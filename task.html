@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow Dashboard</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Segoe UI,sans-serif;
+}
+
+body{
+    background:#f4f7fc;
+    padding:30px;
+}
+
+.container{
+    max-width:1200px;
+    margin:auto;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.header h1{
+    color:#1e293b;
+}
+
+.stats{
+    display:flex;
+    gap:15px;
+}
+
+.card{
+    background:white;
+    padding:15px;
+    border-radius:12px;
+    min-width:120px;
+    box-shadow:0 4px 12px rgba(0,0,0,.08);
+    text-align:center;
+}
+
+.card h3{
+    color:#64748b;
+    font-size:14px;
+}
+
+.card p{
+    font-size:22px;
+    font-weight:bold;
+    color:#0f172a;
+}
+
+.task-form{
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    display:flex;
+    gap:10px;
+    margin-bottom:25px;
+    box-shadow:0 4px 12px rgba(0,0,0,.08);
+}
+
+.task-form input,
+.task-form select{
+    padding:12px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    flex:1;
+}
+
+.task-form button{
+    background:#2563eb;
+    color:white;
+    border:none;
+    padding:12px 20px;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+.task-form button:hover{
+    background:#1d4ed8;
+}
+
+.board{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:20px;
+}
+
+.column{
+    background:white;
+    border-radius:12px;
+    padding:15px;
+    box-shadow:0 4px 12px rgba(0,0,0,.08);
+}
+
+.column h2{
+    margin-bottom:15px;
+}
+
+.task{
+    background:#f8fafc;
+    border-left:4px solid #2563eb;
+    padding:12px;
+    border-radius:8px;
+    margin-bottom:10px;
+}
+
+.task h4{
+    margin-bottom:6px;
+}
+
+.task p{
+    color:#64748b;
+    margin-bottom:10px;
+}
+
+.actions{
+    display:flex;
+    gap:8px;
+}
+
+.btn{
+    border:none;
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    color:white;
+}
+
+.edit{
+    background:#f59e0b;
+}
+
+.delete{
+    background:#ef4444;
+}
+
+.move{
+    background:#10b981;
+}
+
+@media(max-width:768px){
+    .header{
+        flex-direction:column;
+        gap:15px;
+    }
+
+    .task-form{
+        flex-direction:column;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div class="header">
+    <h1>TaskFlow Dashboard</h1>
+
+    <div class="stats">
+        <div class="card">
+            <h3>Total</h3>
+            <p id="total">0</p>
+        </div>
+
+        <div class="card">
+            <h3>Pending</h3>
+            <p id="pending">0</p>
+        </div>
+
+        <div class="card">
+            <h3>Completed</h3>
+            <p id="completed">0</p>
+        </div>
+    </div>
+</div>
+
+<div class="task-form">
+    <input type="text" id="taskTitle" placeholder="Task Title">
+    <input type="text" id="taskDesc" placeholder="Task Description">
+
+    <select id="taskStatus">
+        <option value="Pending">Pending</option>
+        <option value="Completed">Completed</option>
+    </select>
+
+    <button onclick="addTask()">Add Task</button>
+</div>
+
+<div class="board">
+
+    <div class="column">
+        <h2>Pending Tasks</h2>
+        <div id="pendingTasks"></div>
+    </div>
+
+    <div class="column">
+        <h2>Completed Tasks</h2>
+        <div id="completedTasks"></div>
+    </div>
+
+</div>
+
+</div>
+
+<script>
+
+let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+function saveTasks(){
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+}
+
+function addTask(){
+
+    const title = document.getElementById("taskTitle").value.trim();
+    const desc = document.getElementById("taskDesc").value.trim();
+    const status = document.getElementById("taskStatus").value;
+
+    if(!title){
+        alert("Enter task title");
+        return;
+    }
+
+    tasks.push({
+        id: Date.now(),
+        title,
+        desc,
+        status
+    });
+
+    document.getElementById("taskTitle").value="";
+    document.getElementById("taskDesc").value="";
+
+    saveTasks();
+    renderTasks();
+}
+
+function deleteTask(id){
+    tasks = tasks.filter(task => task.id !== id);
+    saveTasks();
+    renderTasks();
+}
+
+function editTask(id){
+
+    const task = tasks.find(t => t.id === id);
+
+    const title = prompt("Edit Title", task.title);
+    if(title === null) return;
+
+    const desc = prompt("Edit Description", task.desc);
+
+    task.title = title;
+    task.desc = desc;
+
+    saveTasks();
+    renderTasks();
+}
+
+function moveTask(id){
+
+    const task = tasks.find(t => t.id === id);
+
+    task.status =
+    task.status === "Pending"
+    ? "Completed"
+    : "Pending";
+
+    saveTasks();
+    renderTasks();
+}
+
+function renderTasks(){
+
+    const pendingDiv = document.getElementById("pendingTasks");
+    const completedDiv = document.getElementById("completedTasks");
+
+    pendingDiv.innerHTML="";
+    completedDiv.innerHTML="";
+
+    tasks.forEach(task => {
+
+        const card = document.createElement("div");
+        card.className = "task";
+
+        card.innerHTML = `
+            <h4>${task.title}</h4>
+            <p>${task.desc}</p>
+
+            <div class="actions">
+                <button class="btn edit"
+                onclick="editTask(${task.id})">
+                Edit
+                </button>
+
+                <button class="btn move"
+                onclick="moveTask(${task.id})">
+                Move
+                </button>
+
+                <button class="btn delete"
+                onclick="deleteTask(${task.id})">
+                Delete
+                </button>
+            </div>
+        `;
+
+        if(task.status === "Pending"){
+            pendingDiv.appendChild(card);
+        }else{
+            completedDiv.appendChild(card);
+        }
+    });
+
+    document.getElementById("total").textContent = tasks.length;
+
+    document.getElementById("pending").textContent =
+    tasks.filter(t => t.status === "Pending").length;
+
+    document.getElementById("completed").textContent =
+    tasks.filter(t => t.status === "Completed").length;
+}
+
+renderTasks();
+
+</script>
+
+</body>
+</html>
